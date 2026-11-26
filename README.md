@@ -1,4 +1,4 @@
-# 🎓 ai.study — AI Student Study Assistant
+# 🎓 socraticai.study — Socratic AI Study Companion
 
 Ứng dụng web hỗ trợ sinh viên học tập chủ động: hỏi đáp Socratic bám sát tài liệu, tạo Quiz trắc nghiệm thích ứng độ khó, ôn tập giãn cách (Leitner), tự động xếp lịch tự học và đồng bộ tiến độ trên đám mây.
 
