@@ -4,7 +4,7 @@
 
 ## 1. Cấu trúc dự án
 - `app.py`: Backend FastAPI (API Gemini, đọc PDF/DOCX/PPTX/TXT, thuật toán xếp lịch Heuristic, tạo/chấm Quiz, kết nối Supabase).
-- `index.html`: Giao diện đa trang (đã tích hợp Gói A, B, C).
+- `index.html`: Giao diện đa trang.
 - `app.js`: Logic giao diện chính, chống XSS (`DOMPurify`), lưu tạm `localStorage`, Pomodoro, tài khoản Supabase.
 - `progress.js`: Hệ thống điểm XP, chuỗi ngày học, hàng đợi ôn tập Leitner (1 → 3 → 7 → 14 ngày) và đồng bộ Cloud.
 - `quiz.js`: Luồng làm Quiz, dự đoán điểm, điều chỉnh cấp độ 1–5 và màn hình **Hôm nay**.
