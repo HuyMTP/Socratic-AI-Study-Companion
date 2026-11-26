@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ai.study — AI Student Assistant</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --bg-base: #070709;
+            --bg-sidebar: #050507;
+            --bg-surface: #111114;
+            --bg-elevated: #18181C;
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(255, 255, 255, 0.18);
+            --text-primary: #FAFAFA;
+            --text-secondary: #A1A1AA;
+            --text-muted: #63636E;
+            --accent-white: #FFFFFF;
+            --accent-blue: #3B82F6;
+            --accent-green: #22C55E;
+            --accent-red: #F87171;
+            --accent-amber: #FBBF24;
+            --radius-lg: 20px;
+            --radius-md: 12px;
+            --radius-pill: 9999px;
+            --sidebar-width: 270px;
+            --sidebar-collapsed-width: 74px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-image:
+                radial-gradient(circle at 60% 0%, rgba(255, 255, 255, 0.05) 0%, transparent 50%),
+                linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 100% 100%, 64px 64px, 64px 64px;
+        }
+
+        /* ==================== KHUNG BỐ CỤC 2 CỘT (SIDEBAR + MAIN) ==================== */
+        .app-layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ==================== SIDEBAR NAVIGATION MAP (ĐÃ ẨN THANH TRƯỢT) ==================== */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--border-subtle);
+            display: flex;
+            flex-direction: column;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: none; /* Ẩn thanh trượt trên Firefox */
+            -ms-overflow-style: none; /* Ẩn thanh trượt trên IE/Edge cũ */
+            padding: 18px 16px;
+            transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s ease;
+            z-index: 60;
+            flex-shrink: 0;
+        }
+        .sidebar::-webkit-scrollbar {
+            display: none; /* Ẩn thanh trượt trên Chrome, Safari, Edge */
+        }
+
+        .sidebar.collapsed {
+            width: var(--sidebar-collapsed-width);
+            padding: 18px 10px;
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 16px;
+            margin-bottom: 14px;
+            border-bottom: 1px solid var(--border-subtle);
+            gap: 8px;
+        }
+
+        .brand-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.15rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            color: var(--text-primary);
+            white-space: nowrap;
+            cursor: pointer;
+        }
+
+        .nav-map-badge {
+            background: rgba(34, 197, 94, 0.14);
+            color: #4ADE80;
+            border: 1px solid rgba(34, 197, 94, 0.28);
+            font-size: 0.68rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: var(--radius-pill);
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .nav-map-badge:hover {
+            background: rgba(34, 197, 94, 0.24);
+        }
+
+        .nav-section {
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        .nav-section:last-of-type {
+            border-bottom: none;
+        }
+
+        .nav-section-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            padding: 0 6px;
+            white-space: nowrap;
+        }
+        .nav-section-title svg {
+            width: 15px;
+            height: 15px;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+
+        .nav-item {
+            width: 100%;
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            padding: 9px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.86rem;
+            font-weight: 500;
+            text-align: left;
+            transition: all 0.18s ease;
+            white-space: nowrap;
+            margin-bottom: 2px;
+        }
+        .nav-item svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+            stroke-width: 1.9;
+        }
+        .nav-item:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.04);
+        }
+        .nav-item.active {
+            color: var(--text-primary);
+            background: rgba(59, 130, 246, 0.12);
+            border-color: rgba(59, 130, 246, 0.28);
+            font-weight: 600;
+        }
+        .nav-item.active svg {
+            color: var(--accent-blue);
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding-top: 14px;
+            border-top: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .sidebar-footer-note {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            line-height: 1.35;
+        }
+        .collapse-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+            border-radius: 8px;
+            width: 32px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+            transition: all 0.2s;
+        }
+        .collapse-btn:hover {
+            color: var(--text-primary);
+            border-color: var(--border-hover);
+        }
+
+        /* Ẩn chữ khi Sidebar ở chế độ icon-only */
+        .sidebar.collapsed .brand-text,
+        .sidebar.collapsed .nav-map-badge,
+        .sidebar.collapsed .nav-section-title span,
+        .sidebar.collapsed .nav-item span,
+        .sidebar.collapsed .sidebar-footer-note {
+            display: none;
+        }
+        .sidebar.collapsed .sidebar-header,
+        .sidebar.collapsed .nav-section-title,
+        .sidebar.collapsed .nav-item,
+        .sidebar.collapsed .sidebar-footer {
+            justify-content: center;
+            padding-left: 0;
+            padding-right: 0;
+        }
+
+        /* ==================== MAIN WORKSPACE & TOPBAR ==================== */
+        .main-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .topbar {
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 36px;
+            background: rgba(7, 7, 9, 0.82);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .breadcrumb-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .breadcrumb-category {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-secondary);
+        }
+        .breadcrumb-sep { color: var(--text-muted); }
+        .breadcrumb-page {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .mini-pomo-pill {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 14px;
+            border-radius: var(--radius-pill);
+            background: rgba(34, 197, 94, 0.12);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #4ADE80;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* ==================== NÚT BONG BÓNG ==================== */
+        .btn-white-pill {
+            background: var(--accent-white);
+            color: #09090B;
+            font-weight: 600;
+            font-size: 0.85rem;
+            padding: 10px 20px;
+            border-radius: var(--radius-pill);
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: transform 0.15s ease, opacity 0.15s ease;
+        }
+        .btn-white-pill:hover { opacity: 0.92; transform: translateY(-1px); }
+
+        .btn-dark-pill {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-primary);
+            font-weight: 500;
+            font-size: 0.85rem;
+            padding: 10px 18px;
+            border-radius: var(--radius-pill);
+            border: 1px solid var(--border-subtle);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        .btn-dark-pill:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--border-hover);
+        }
+
+        /* ==================== PAGE VIEWS ==================== */
+        .page-container {
+            max-width: 1240px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 32px 36px 64px;
+        }
+
+        .page-view { display: none; }
+        .page-view.active { display: block; animation: pageFade 0.22s ease; }
+
+        @keyframes pageFade {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .page-header {
+            margin-bottom: 24px;
+            padding-bottom: 18px;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            gap: 14px;
+        }
+        .section-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-tag::before {
+            content: "";
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--text-primary);
+        }
+        .page-title {
+            font-size: 1.85rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+        }
+        .page-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.88rem;
+            max-width: 560px;
+            line-height: 1.5;
+        }
+
+        /* ==================== FINTO CARDS & GRIDS ==================== */
+        .finto-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+        }
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+            gap: 12px;
+        }
+        .card-title { font-size: 1.02rem; font-weight: 600; }
+        .card-caption { font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 14px; line-height: 1.5; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 18px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            cursor: pointer;
+            transition: border-color 0.2s, transform 0.15s;
+        }
+        .stat-card:hover {
+            border-color: var(--border-hover);
+            transform: translateY(-2px);
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            margin: 8px 0 4px;
+        }
+
+        .grid-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 22px;
+        }
+        .grid-socratic {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 22px;
+            align-items: start;
+        }
+
+        /* ==================== FORMS & INPUTS ==================== */
+        .field-label {
+            display: block;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
+            margin-top: 14px;
+        }
+        .finto-input, .finto-select {
+            width: 100%;
+            background: var(--bg-base);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-primary);
+            padding: 11px 14px;
+            border-radius: var(--radius-md);
+            font-size: 0.88rem;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .finto-input:focus, .finto-select:focus { border-color: var(--accent-white); }
+
+        .radio-group { display: flex; flex-direction: column; gap: 8px; }
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            background: var(--bg-base);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-size: 0.86rem;
+        }
+        .radio-option input { accent-color: var(--accent-white); }
+
+        .upload-zone {
+            border: 1px dashed rgba(255, 255, 255, 0.2);
+            border-radius: var(--radius-md);
+            padding: 28px 20px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.02);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: block;
+        }
+        .upload-zone:hover {
+            border-color: var(--accent-white);
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        /* ==================== CHAT INTERFACE ==================== */
+        .chat-card {
+            display: flex;
+            flex-direction: column;
+            height: 620px;
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .msg-bubble {
+            max-width: 82%;
+            padding: 14px 18px;
+            border-radius: 18px;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        .msg-user {
+            align-self: flex-end;
+            background: var(--accent-white);
+            color: #09090B;
+            border-bottom-right-radius: 4px;
+            font-weight: 500;
+        }
+        .msg-assistant {
+            align-self: flex-start;
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            border: 1px solid var(--border-subtle);
+            border-bottom-left-radius: 4px;
+        }
+        .msg-assistant p { margin-bottom: 8px; }
+        .msg-assistant p:last-child { margin-bottom: 0; }
+        .msg-assistant ul, .msg-assistant ol { padding-left: 20px; margin-bottom: 8px; }
+
+        .chat-input-bar {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        /* ==================== TABLES ==================== */
+        .table-wrap {
+            overflow-x: auto;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            background: var(--bg-base);
+        }
+        table.finto-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.86rem;
+        }
+        table.finto-table th {
+            text-align: left;
+            padding: 11px 14px;
+            background: var(--bg-elevated);
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.76rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+        table.finto-table td {
+            border-bottom: 1px solid var(--border-subtle);
+            padding: 0;
+        }
+        table.finto-table td input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            padding: 11px 14px;
+            font-size: 0.86rem;
+            font-family: inherit;
+            outline: none;
+        }
+        table.finto-table td input:focus { background: rgba(255, 255, 255, 0.05); }
+        .row-del-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0 12px;
+            font-size: 1.05rem;
+        }
+        .row-del-btn:hover { color: var(--accent-red); }
+
+        /* ==================== POMODORO PHONE CARD ==================== */
+        .pomo-device {
+            max-width: 440px;
+            margin: 0 auto;
+            background: linear-gradient(180deg, #18181D 0%, #0E0E11 100%);
+            border: 2px solid rgba(255, 255, 255, 0.12);
+            border-radius: 32px;
+            padding: 36px 28px;
+            text-align: center;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.65);
+        }
+        .pomo-digits {
+            font-size: 4.2rem;
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            margin: 10px 0 12px;
+            font-variant-numeric: tabular-nums;
+        }
+        .pomo-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: var(--radius-pill);
+            background: rgba(34, 197, 94, 0.14);
+            color: #4ADE80;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 22px;
+        }
+        .pomo-progress-track {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius-pill);
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+        .pomo-progress-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--accent-white);
+            transition: width 0.3s linear;
+        }
+
+        /* ==================== MODAL & TOAST ==================== */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        .modal-backdrop.open { display: flex; }
+        .modal-box {
+            width: 100%;
+            max-width: 420px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-hover);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+        }
+        .auth-tabs {
+            display: flex;
+            gap: 6px;
+            background: var(--bg-base);
+            padding: 5px;
+            border-radius: var(--radius-pill);
+            border: 1px solid var(--border-subtle);
+            margin-bottom: 16px;
+        }
+        .auth-tab {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            padding: 8px 12px;
+            border-radius: var(--radius-pill);
+            cursor: pointer;
+            font-size: 0.84rem;
+            font-weight: 600;
+        }
+        .auth-tab.active {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+        }
+
+        .toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 200;
+        }
+        .toast {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-hover);
+            color: var(--text-primary);
+            padding: 12px 18px;
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+        }
+
+        @media (max-width: 992px) {
+            .stats-grid, .grid-2col, .grid-socratic { grid-template-columns: 1fr; }
+            .page-container { padding: 20px; }
+            .topbar { padding: 14px 20px; }
+        }
+    </style>
+
+    <style>
+        .quiz-option { display:block; width:100%; text-align:left; background:var(--bg-base); border:1px solid var(--border-subtle);
+            color:var(--text-primary); padding:13px 16px; border-radius:var(--radius-md); font-size:0.92rem; font-family:inherit;
+            cursor:pointer; margin-bottom:10px; transition:all .15s; line-height:1.45; }
+        .quiz-option:hover:not(:disabled) { border-color:var(--border-hover); background:rgba(255,255,255,0.04); }
+        .quiz-option:disabled { cursor:default; }
+        .quiz-option.correct { border-color:var(--accent-green); background:rgba(34,197,94,0.12); }
+        .quiz-option.wrong { border-color:var(--accent-red); background:rgba(248,113,113,0.12); }
+        .quiz-option.dim { opacity:.55; }
+        .predict-btn { width:46px; height:46px; border-radius:var(--radius-md); border:1px solid var(--border-subtle);
+            background:var(--bg-base); color:var(--text-primary); font-size:1rem; font-weight:600; cursor:pointer; font-family:inherit; }
+        .predict-btn:hover { border-color:var(--border-hover); }
+        .predict-btn.selected { background:var(--accent-white); color:#09090B; border-color:var(--accent-white); }
+        .level-seg { width:22px; height:8px; border-radius:4px; background:rgba(255,255,255,0.12); }
+        .level-seg.on { background:var(--accent-blue); }
+    </style>
+</head>
+<body>
+
+<div class="app-layout">
+    <!-- ==================== THANH NAVIGATION BÊN TRÁI ==================== -->
+    <aside id="appSidebar" class="sidebar">
+        <div class="sidebar-header">
+            <div class="brand-logo" onclick="navigateTo('dashboard')">
+                <span>🎓</span>
+                <span class="brand-text">ai.study</span>
+            </div>
+        </div>
+
+        <!-- 1. OVERVIEW -->
+        <div class="nav-section">
+            <div class="nav-section-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+                <span>OVERVIEW</span>
+            </div>
+            <button class="nav-item active" data-page="dashboard" onclick="navigateTo('dashboard')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5z"/></svg>
+                <span>Dashboard</span>
+            </button>
+        </div>
+
+        <!-- 2. AI LEARNING -->
+        <div class="nav-section">
+            <div class="nav-section-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3a6 6 0 0 0-6 6c0 2.2 1.2 4.1 3 5.2V17a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2v-2.8c1.8-1.1 3-3 3-5.2a6 6 0 0 0-6-6z"/><path d="M9 21h6"/></svg>
+                <span>AI LEARNING</span>
+            </div>
+            <button class="nav-item" data-page="socratic-ai" onclick="navigateTo('socratic-ai')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                <span>Socratic AI</span>
+            </button>
+            <button class="nav-item" data-page="my-materials" onclick="navigateTo('my-materials')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 4h7a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-7a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h8z"/></svg>
+                <span>My Materials</span>
+            </button>
+            <button class="nav-item" data-page="quiz" onclick="navigateTo('quiz')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                <span>Quiz</span>
+            </button>
+        </div>
+
+        <!-- 3. STUDY MANAGEMENT -->
+        <div class="nav-section">
+            <div class="nav-section-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                <span>STUDY MANAGEMENT</span>
+            </div>
+            <button class="nav-item" data-page="study-calendar" onclick="navigateTo('study-calendar')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                <span>Study Calendar</span>
+            </button>
+            <button class="nav-item" data-page="week" onclick="navigateTo('week')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h2M14 14h2M8 18h2"/></svg>
+                <span>Lịch tuần</span>
+            </button>
+            <button class="nav-item" data-page="tasks-deadlines" onclick="navigateTo('tasks-deadlines')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                <span>Tasks & Deadlines</span>
+            </button>
+            <button class="nav-item" data-page="ai-scheduler" onclick="navigateTo('ai-scheduler')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M15 4V2m0 14v-2M8 9h2m10 0h2m-4.2-4.8L19 3m-1.2 11.8L19 16M3 21l9-9m.2-6.8L11 3"/></svg>
+                <span>Scheduler</span>
+            </button>
+        </div>
+
+        <!-- 4. FOCUS & PROGRESS -->
+        <div class="nav-section">
+            <div class="nav-section-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M9 2h6"/></svg>
+                <span>FOCUS & PROGRESS</span>
+            </div>
+            <button class="nav-item" data-page="focus-mode" onclick="navigateTo('focus-mode')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M10 2h4"/></svg>
+                <span>Focus Mode</span>
+            </button>
+        </div>
+
+        <!-- 5. PERSONAL -->
+        <div class="nav-section">
+            <div class="nav-section-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.6.77 1.05 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                <span>PERSONAL</span>
+            </div>
+            <button class="nav-item" data-page="profile" onclick="navigateTo('profile')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span>Profile</span>
+            </button>
+            <button class="nav-item" data-page="settings" onclick="navigateTo('settings')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+                <span>Settings</span>
+            </button>
+        </div>
+
+        <div class="sidebar-footer">
+            <span class="sidebar-footer-note">Sidebar có thể thu gọn thành icon-only để tiết kiệm không gian.</span>
+            <button class="collapse-btn" onclick="toggleSidebar()" title="Thu gọn / Mở rộng Sidebar">⇄</button>
+        </div>
+    </aside>
+
+    <!-- ==================== VÙNG NỘI DUNG BÊN PHẢI ==================== -->
+    <div class="main-wrapper">
+        <!-- Thanh Topbar giữ nút bong bóng Đăng nhập / Đăng ký ở góc phải -->
+        <header class="topbar">
+            <div class="breadcrumb-box">
+                <span id="bcCategory" class="breadcrumb-category">OVERVIEW</span>
+                <span class="breadcrumb-sep">/</span>
+                <span id="bcPage" class="breadcrumb-page">Dashboard</span>
+            </div>
+
+            <div class="topbar-right">
+                <div id="miniPomoBadge" class="mini-pomo-pill" onclick="navigateTo('focus-mode')">
+                    <span>⏱️</span>
+                    <span id="miniPomoText">25:00</span>
+                </div>
+                <button id="navbarUserBtn" class="btn-white-pill" onclick="openAuthModal()">
+                    <span>👤 Đăng nhập / Đăng ký</span>
+                    <span>→</span>
+                </button>
+            </div>
+        </header>
+
+        <main class="page-container">
+
+            <!-- ==================== PAGE 1: DASHBOARD ==================== -->
+            <section id="page-dashboard" class="page-view active">
+                <div class="page-header">
+                    <div>
+                        <div class="section-tag">OVERVIEW / DASHBOARD</div>
+                        <h1 class="page-title">Không gian điều khiển học tập</h1>
+                    </div>
+                </div>
+
+                <div id="todayCard" class="finto-card" style="margin-bottom:24px;"></div>
+                <div class="stats-grid">
+                    <div class="stat-card" onclick="navigateTo('my-materials')">
+                        <div class="section-tag" style="margin-bottom:4px;">MY MATERIALS</div>
+                        <div id="dashDocCount" class="stat-value">0</div>
+                        <div class="card-caption" style="margin:0;">Tài liệu bài giảng đã nạp</div>
+                    </div>
+                    <div class="stat-card" onclick="navigateTo('study-calendar')">
+                        <div class="section-tag" style="margin-bottom:4px;">STUDY CALENDAR</div>
+                        <div id="dashClassCount" class="stat-value">2</div>
+                        <div class="card-caption" style="margin:0;">Môn học trong thời khóa biểu</div>
+                    </div>
+                    <div class="stat-card" onclick="navigateTo('tasks-deadlines')">
+                        <div class="section-tag" style="margin-bottom:4px;">DEADLINES</div>
+                        <div id="dashTaskCount" class="stat-value">1</div>
+                        <div class="card-caption" style="margin:0;">Công việc / Ôn tập đang chờ</div>
+                    </div>
+                    <div class="stat-card" onclick="navigateTo('focus-mode')">
+                        <div class="section-tag" style="margin-bottom:4px;">FOCUS MODE</div>
+                        <div id="dashPomoState" class="stat-value">25:00</div>
+                        <div class="card-caption" style="margin:0;">Đồng hồ Pomodoro tập trung</div>
+                    </div>
+                </div>
+
+                <div class="grid-2col">
+                    <div class="finto-card">
+                        <div class="section-tag">AI LEARNING SHORTCUTS</div>
+                        <h3 class="card-title" style="margin-bottom:10px;">Trợ lý học tập Socratic</h3>
+                        <p class="card-caption">Tải giáo trình, đặt câu hỏi gợi mở tư duy.</p>
+                        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
+                            <button class="btn-white-pill" onclick="navigateTo('socratic-ai')">💬 Mở Socratic AI</button>
+                            <button class="btn-dark-pill" onclick="navigateTo('my-materials')">📂 Nạp tài liệu</button>
+                        </div>
+                    </div>
+
+                    <div class="finto-card">
+                        <div class="section-tag">STUDY MANAGEMENT SHORTCUTS</div>
+                        <h3 class="card-title" style="margin-bottom:10px;">Quản lý Thời khóa biểu & Xếp lịch</h3>
+                        <p class="card-caption">Cập nhật lịch học trên trường, hạn nộp bài và tự động chia lịch tự học.</p>
+                        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
+                            <button class="btn-white-pill" onclick="navigateTo('ai-scheduler')">✨ Xếp lịch tự học</button>
+                            <button class="btn-dark-pill" onclick="navigateTo('study-calendar')">🏫 Sửa TKB</button>
+                            <button class="btn-dark-pill" onclick="navigateTo('tasks-deadlines')">📝 Sửa Deadline</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==================== PAGE 2: SOCRATIC AI ==================== -->
+            <section id="page-socratic-ai" class="page-view">
+                <div class="page-header">
+                    <div>
+                        <div class="section-tag">AI LEARNING / SOCRATIC AI</div>
+                        <h1 class="page-title">💬 Đối thoại cùng Trợ lý gợi mở</h1>
+                    </div>
+                    <button class="btn-dark-pill" onclick="navigateTo('my-materials')">📂 Quản lý tài liệu bài giảng</button>
+                </div>
+
+                <div class="grid-socratic">
+                    <div style="display:flex; flex-direction:column; gap:18px;">
+                        <div class="finto-card">
+                            <div class="section-tag">CHẾ ĐỘ TƯƠNG TÁC</div>
+                            <span class="field-label" style="margin-top:4px;">Bạn muốn AI làm gì?</span>
+                            <div class="radio-group">
+                                <label class="radio-option">
+                                    <input type="radio" name="ai_mode" value="Giải thích khái niệm" checked>
+                                    <span>Giải thích khái niệm</span>
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="ai_mode" value="Tóm tắt tài liệu">
+                                    <span>Tóm tắt tài liệu</span>
+                                </label>
+                            </div>
+
+                            <span class="field-label">Mức độ diễn giải:</span>
+                            <select id="aiLevel" class="finto-select">
+                                <option value="Dễ hiểu (như mới học lần đầu)">Dễ hiểu (như mới học lần đầu)</option>
+                                <option value="Vừa phải">Vừa phải</option>
+                                <option value="Chuyên sâu">Chuyên sâu</option>
+                            </select>
+                        </div>
+
+                        <div class="finto-card">
+                            <div class="section-tag">ĐƯA VÀO LỊCH ÔN TẬP</div>
+                            <p class="card-caption">Chủ đề thêm tại đây sẽ tự động chuyển sang trang <strong>Tasks & Deadlines</strong>.</p>
+                            <span class="field-label" style="margin-top:0;">Chủ đề cần củng cố</span>
+                            <input id="topicInput" class="finto-input" placeholder="vd: Đạo hàm riêng cấp 2">
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                                <div>
+                                    <span class="field-label">Hạn / Ngày thi</span>
+                                    <input id="dueInput" class="finto-input" placeholder="30/11">
+                                </div>
+                                <div>
+                                    <span class="field-label">Số giờ dự kiến</span>
+                                    <input id="hoursInput" type="number" step="0.5" min="0.5" value="2.0" class="finto-input">
+                                </div>
+                            </div>
+                            <button class="btn-white-pill" style="width:100%; margin-top:16px;" onclick="addTopicToSchedule()">
+                                ➕ Thêm vào danh sách việc
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="finto-card chat-card">
+                        <div class="card-header">
+                            <div>
+                                <div class="section-tag" style="margin-bottom:4px;">SOCRATIC DIALOGUE</div>
+                                <h3 class="card-title">Khung đối thoại Socratic</h3>
+                            </div>
+                            <button class="btn-dark-pill" onclick="clearChat()">Làm mới hội thoại</button>
+                        </div>
+
+                        <div id="chatBox" class="chat-messages">
+                            <div class="msg-bubble msg-assistant">
+                                Xin chào! Hãy tải lên tài liệu ở mục <strong>My Materials</strong> hoặc đặt bất kỳ câu hỏi nào về bài học để chúng ta cùng phân tích nhé.
+                            </div>
+                        </div>
+
+                        <form class="chat-input-bar" onsubmit="sendChatMessage(event)">
+                            <input id="chatInput" class="finto-input" placeholder="Đặt câu hỏi về bài giảng hoặc khái niệm chưa hiểu..." autocomplete="off">
+                            <button type="submit" class="btn-white-pill">Gửi ➔</button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==================== PAGE 3: MY MATERIALS ==================== -->
+            <section id="page-my-materials" class="page-view">
+                <div class="page-header">
+                    <div>
+                        <div class="section-tag">AI LEARNING / MY MATERIALS</div>
+                        <h1 class="page-title">📂 Tài liệu bài giảng của tôi</h1>
+                    </div>
+                    <button class="btn-white-pill" onclick="navigateTo('socratic-ai')">💬 Hỏi AI về tài liệu này →</button>
+                </div>
+
+                <div class="grid-2col">
+                    <div class="finto-card">
+                        <div class="section-tag">01 / UPLOAD DOCUMENTS</div>
+                        <h3 class="card-title" style="margin-bottom:8px;">Tải file (.pdf, .docx, .pptx, .txt)</h3>
+                        <p class="card-caption">Hệ thống tự động trích xuất văn bản kèm số Trang/Slide để AI trích dẫn chính xác nguồn khi giải thích.</p>
+
+                        <label class="upload-zone" for="fileInput">
+                            <div style="font-size:2rem; margin-bottom:8px;">📄</div>
+                            <div style="font-size:0.92rem; font-weight:600;">Nhấn để chọn một hoặc nhiều file bài giảng</div>
+                            <div id="uploadStatus" style="font-size:0.8rem; color:var(--text-secondary); margin-top:6px;">Chưa có tài liệu nào được tải lên</div>
+                        </label>
+                        <input type="file" id="fileInput" multiple accept=".pdf,.docx,.pptx,.txt" style="display:none;" onchange="handleFileUpload(this.files)">
+
+                        <div id="uploadedFilesList" style="margin-top:16px; display:flex; flex-direction:column; gap:8px;"></div>
+                    </div>
+
+                    <div class="finto-card">
+                        <div class="section-tag">02 / EXTRACTED CONTEXT PREVIEW</div>
+                        <h3 class="card-title" style="margin-bottom:8px;">Nội dung văn bản đã số hóa</h3>
+                        <pre id="contextPreviewBox" style="background:var(--bg-base); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:14px; height:260px; overflow-y:auto; font-family:'JetBrains Mono',monospace; font-size:0.78rem; color:var(--text-secondary); white-space:pre-wrap;">Chưa có nội dung trích xuất.</pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==================== PAGE 5: STUDY CALENDAR ==================== -->
+            <section id="page-study-calendar" class="page-view">
+                <div class="page-header">
+                    <div>
+                        <div class="section-tag">STUDY MANAGEMENT / STUDY CALENDAR</div>
+                        <h1 class="page-title">🏫 1. Thời khóa biểu trên trường</h1>
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn-dark-pill" onclick="addRow('ttBody', 5)">+ Thêm môn học</button>
+                        <button class="btn-white-pill" onclick="saveToSupabase()">💾 Lưu vào tài khoản</button>
+                        <button class="btn-dark-pill" onclick="loadFromSupabase()">🔄 Nạp lại dữ liệu</button>
+                    </div>
+                </div>
+
+                <div class="finto-card">
+                    <p class="card-caption">Thứ: 2–7 hoặc CN. Giờ nhập chuẩn: 07:00. Có thể dán trực tiếp nhiều dòng từ Excel bằng <strong>Ctrl+V</strong>.</p>
+                    <div class="table-wrap">
+                        <table class="finto-table">
+                            <thead>
+                                <tr>
+                                    <th>Môn học</th>
+                                    <th style="width:90px;">Thứ</th>
+                                    <th style="width:130px;">Giờ bắt đầu</th>
+                                    <th style="width:130px;">Giờ kết thúc</th>
+                                    <th style="width:120px;">Phòng</th>
+                                    <th style="width:44px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="ttBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==================== PAGE 6: TASKS & DEADLINES ==================== -->
+            <section id="page-tasks-deadlines" class="page-view">
+                <div class="page-header">
+                    <div>
+                        <div class="section-tag">STUDY MANAGEMENT / TASKS & DEADLINES</div>
+                        <h1 class="page-title">📝 2. Việc cần làm / Deadline</h1>
+                    </div>
+                    <div style="display:flex; gap:10px;">
+                        <button class="btn-dark-pill" onclick="addRow('dlBody', 4)">+ Thêm công việc</button>
+                        <button class="btn-white-pill" onclick="saveToSupabase()">💾 Lưu vào tài khoản</button>
+                        <button class="btn-dark-pill" onclick="loadFromSupabase()">🔄 Nạp lại dữ liệu</button>
+                    </div>
+                </div>
+
+                <div class="finto-card">
+                    <p class="card-caption">Các chủ đề lưu từ trang <strong>Socratic AI</strong> sẽ tự động được liệt kê vào đây. Hỗ trợ dán trực tiếp từ Excel bằng <strong>Ctrl+V</strong>.</p>
+                    <div class="table-wrap">
+                        <table class="finto-table">
+                            <thead>
+                                <tr>
+                                    <th>Công việc</th>
+                                    <th>Môn học</th>
+                                    <th style="width:140px;">Hạn (dd/mm)</th>
+                                    <th style="width:140px;">Số giờ ước tính</th>
+                                    <th style="width:44px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="dlBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==================== PAGE 7: AI SCHEDULER ==================== -->
+            <section id="page-ai-scheduler" class="page-view">
+                <div class="page-header">
+                    <div>
+                        <div class="section-tag">STUDY MANAGEMENT / AI SCHEDULER</div>
+                        <h1 class="page-title">✨ 3. Tự động xếp lịch tự học</h1>
+                    </div>
+                </div>
+
+                <div class="finto-card">
+                    <div class="grid-2col" style="margin-bottom:20px;">
+                        <div>
+                            <span class="field-label" style="margin-top:0;">Số giờ tự học tối đa mỗi ngày: <strong id="hoursSliderLabel" style="color:var(--accent-white);">3.0h</strong></span>
+                            <input type="range" id="hoursSlider" min="1.0" max="8.0" step="0.5" value="3.0" style="width:100%; accent-color:var(--accent-white);" oninput="document.getElementById('hoursSliderLabel').innerText = this.value + 'h'">
+                        </div>
+                        <div>
+                            <span class="field-label" style="margin-top:0;">Khung giờ học ưa thích:</span>
+                            <div style="display:flex; gap:10px;">
+                                <label class="radio-option" style="flex:1; justify-content:center;">
+                                    <input type="radio" name="time_pref" value="Sáng"> <span>Sáng</span>
+                                </label>
+                                <label class="radio-option" style="flex:1; justify-content:center;">
+                                    <input type="radio" name="time_pref" value="Chiều"> <span>Chiều</span>
+                                </label>
+                                <label class="radio-option" style="flex:1; justify-content:center;">
+                                    <input type="radio" name="time_pref" value="Tối" checked> <span>Tối</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn-white-pill" style="width:100%; margin-bottom:18px;" onclick="runScheduleAlgorithm()">
+                        🚀 Chạy thuật toán xếp lịch
+                    </button>
+
+                    <div id="scheduleWarnings" style="display:flex; flex-direction:column; gap:8px; margin-bottom:14px;"></div>
+
+                    <div id="scheduleResultWrap" class="table-wrap" style="display:none;">
+                        <table class="finto-table">
+                            <thead>
+                                <tr>
+                                    <th>Ngày</th>
+                                    <th>Khung giờ</th>
+                                    <th>Nội dung</th>
+                                </tr>
+                            </thead>
+                            <tbody id="scheduleResultBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==================== PAGE 8: FOCUS MODE ==================== -->
+            <section id="page-focus-mode" class="page-view">
+                <div class="page-header">
+                    <div>
+                        <div class="section-tag">FOCUS & PROGRESS / FOCUS MODE</div>
+                        <h1 class="page-title">⏱️ 4. Đồng hồ Pomodoro tập trung</h1>
+                    </div>
+                </div>
+
+                <div class="pomo-device">
+                    <div class="section-tag" style="justify-content:center;">POMODORO FOCUS BALANCE</div>
+                    <div id="pomoDigits" class="pomo-digits">25:00</div>
+                    <div id="pomoPhaseBadge" class="pomo-badge">🎯 Tập trung sâu (25 phút)</div>
+
+                    <div class="pomo-progress-track">
+                        <div id="pomoBar" class="pomo-progress-fill"></div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                        <button id="pomoStartBtn" class="btn-white-pill" onclick="togglePomodoro()">▶️ Bắt đầu</button>
+                        <button class="btn-dark-pill" onclick="resetPomodoro()">🔄 Đặt lại</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==================== PAGE 9: STUDY ANALYTICS ==================== -->
+            <section id="page-study-analytics" class="page-view">
+                <div class="page-header">
+                    <div>
+                        <div class="section-tag">FOCUS & PROGRESS / STUDY ANALYTICS</div>
+                        <h1 class="page-title">📊 Phân tích khối lượng học tập</h1>
+                    </div>
+                    <button class="btn-dark-pill" onclick="refreshAnalytics()">🔄 Cập nhật số liệu</button>
+                </div>
+
+                <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
+                    <div class="stat-card">
+                        <div class="section-tag">CLASSROOM HOURS</div>
+                        <div id="anaClassCount" class="stat-value">0 môn</div>
+                        <div class="card-caption" style="margin:0;">Tổng số ca học trên trường trong tuần</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="section-tag">ESTIMATED WORKLOAD</div>
+                        <div id="anaTotalHours" class="stat-value">0.0h</div>
+                        <div class="card-caption" style="margin:0;">Tổng số giờ ước tính cho toàn bộ Deadline</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="section-tag">SCHEDULED SESSIONS</div>
+                        <div id="anaScheduledCount" class="stat-value">0 phiên</div>
+                        <div class="card-caption" style="margin:0;">Số phiên tự học đã được thuật toán phân bổ</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==================== PAGE 10: PROFILE ==================== -->
+            <section id="page-profile" class="page-view">
+                <div class="page-header">
+                    <div>
+                        <div class="section-tag">PERSONAL / PROFILE</div>
+                        <h1 class="page-title">👤 Hồ sơ tài khoản & Đồng bộ đám mây</h1>
+                    </div>
+                </div>
+
+                <div class="finto-card" style="max-width:560px;">
+                    <div class="section-tag">SUPABASE CLOUD STATUS</div>
+                    <h3 id="profileStatusTitle" class="card-title" style="font-size:1.2rem; margin-bottom:8px;">Chưa đăng nhập</h3>
+                    <p id="profileStatusDesc" class="card-caption">Hãy đăng nhập bằng nút bong bóng ở góc trên bên phải để đồng bộ Thời khóa biểu và Deadline lên cơ sở dữ liệu Supabase.</p>
+                    <p class="card-caption" style="margin-top:14px;"><strong>Quyền riêng tư:</strong> tài liệu bạn tải lên chỉ được xử lý rồi lưu trong trình duyệt của bạn, không lưu trên máy chủ. Chỉ thời khóa biểu và việc cần làm được lưu lên đám mây khi bạn bấm Lưu. Câu hỏi và nội dung tài liệu được gửi cho Google Gemini để xử lý. Tiến độ học (điểm, câu cần ôn) được lưu trên trình duyệt và, nếu bạn đã đăng nhập, đồng bộ lên tài khoản của bạn.</p>
+
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:18px;">
+                        <button class="btn-white-pill" onclick="openAuthModal()">🔐 Mở bảng Tài khoản</button>
+                        <button class="btn-dark-pill" onclick="saveToSupabase()">💾 Lưu dữ liệu lên Cloud</button>
+                        <button class="btn-dark-pill" onclick="loadFromSupabase()">🔄 Nạp dữ liệu từ Cloud</button>
+                        <button class="btn-dark-pill" style="color:#F87171; border-color:rgba(248,113,113,0.4);" onclick="deleteAccount()">🗑️ Xóa tài khoản</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ==================== PAGE 11: SETTINGS ==================== -->
+            <section id="page-settings" class="page-view">
+                <div class="page-header">
+                    <div>
+                        <div class="section-tag">PERSONAL / SETTINGS</div>
+                        <h1 class="page-title">⚙️ Cài đặt giao diện & Thông tin hệ thống</h1>
+                    </div>
+                </div>
+
+                <div class="grid-2col">
+                    <div class="finto-card">
+                        <div class="section-tag">UI PREFERENCES</div>
+                        <h3 class="card-title" style="margin-bottom:10px;">Tùy chỉnh thanh điều hướng</h3>
+                        <p class="card-caption">Thu gọn thanh Navigation bên trái thành chế độ chỉ hiển thị biểu tượng (icon-only) để mở rộng không gian học tập.</p>
+                        <button class="btn-white-pill" onclick="toggleSidebar()">⇄ Bật / Tắt chế độ Sidebar Icon-Only</button>
+                    </div>
+
+                    <div class="finto-card">
+                        <div class="section-tag">SYSTEM ARCHITECTURE</div>
+                        <h3 class="card-title" style="margin-bottom:10px;">💡 Thông tin dự án</h3>
+                        <ul style="color:var(--text-secondary); font-size:0.88rem; line-height:1.9; padding-left:18px;">
+                            <li><strong>Kiến trúc</strong>: Multi-Page HTML/CSS/JS + FastAPI</li>
+                            <li><strong>Phong cách</strong>: Finto Modern Minimalist Dark</li>
+                            <li><strong>Mô hình AI</strong>: Google Gemini API (Socratic Pedagogical)</li>
+                            <li><strong>Cơ sở dữ liệu</strong>: Supabase Cloud Auth & PostgreSQL</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+        
+            <!-- ==================== PAGE: QUIZ ==================== -->
+            <section id="page-quiz" class="page-view">
+                <div class="page-header">
+                    <div>
+                        <div class="section-tag">AI LEARNING / QUIZ</div>
+                        <h1 class="page-title">🧠 Quiz tự kiểm tra</h1>
+                    </div>
+                    <button class="btn-dark-pill" onclick="navigateTo('my-materials')">📂 Quản lý tài liệu</button>
+                </div>
+
+                <div id="reviewBox" class="finto-card" style="max-width:680px; margin-bottom:18px;"></div>
+                <div id="quizSetup" class="finto-card" style="max-width:680px;">
+                    <div class="section-tag">BƯỚC 1 / CHUẨN BỊ</div>
+                    <p class="card-caption">Câu hỏi lấy từ chính tài liệu của bạn. Tự trả lời trước khi xem đáp án giúp nhớ lâu hơn đọc lại.</p>
+                    <span class="field-label" style="margin-top:0;">Tài liệu</span>
+                    <select id="quizDoc" class="finto-select"></select>
+                    <span class="field-label">Chủ đề hoặc chương (không bắt buộc)</span>
+                    <input id="quizTopic" class="finto-input" placeholder="vd: co giãn của cầu" maxlength="120">
+                    <p id="quizLevelInfo" class="card-caption" style="margin-top:14px;"></p>
+                    <span class="field-label">Trước khi làm, bạn đoán mình sẽ đúng mấy câu trên 5?</span>
+                    <div id="quizPredict" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+                    <button id="quizStartBtn" class="btn-white-pill" style="width:100%; margin-top:22px;" onclick="startQuiz()">🚀 Bắt đầu quiz</button>
+                </div>
+
+                <div id="quizLoading" class="finto-card" style="display:none; max-width:680px; text-align:center;">
+                    <div style="font-size:2rem; margin-bottom:8px;">⏳</div>
+                    <h3 class="card-title">Đang tạo câu hỏi từ tài liệu của bạn...</h3>
+                    <p class="card-caption" style="margin-top:8px;">Việc này có thể mất vài giây.</p>
+                </div>
+
+                <div id="quizRun" class="finto-card" style="display:none; max-width:760px;">
+                    <div id="quizProgressText" class="section-tag"></div>
+                    <h3 id="quizQuestionText" class="card-title" style="font-size:1.15rem; line-height:1.5; margin-bottom:18px;"></h3>
+                    <div id="quizOptions"></div>
+                    <div id="quizFeedback" style="display:none; background:var(--bg-elevated); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:14px 16px; margin-top:6px;"></div>
+                    <button id="quizNextBtn" class="btn-white-pill" style="display:none; margin-top:16px;" onclick="nextQuestion()">Câu tiếp theo ➔</button>
+                </div>
+
+                <div id="quizResult" class="finto-card" style="display:none; max-width:680px;">
+                    <div class="section-tag">KẾT QUẢ</div>
+                    <h2 id="quizScoreText" style="font-size:2rem; font-weight:800; margin:6px 0 14px;"></h2>
+                    <p id="quizCalibration" class="card-caption"></p>
+                    <p id="quizLevelResult" class="card-caption" style="color:var(--text-primary); font-weight:600;"></p>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:18px;">
+                        <button class="btn-white-pill" onclick="renderQuizSetup()">🔁 Làm bộ khác</button>
+                        <button class="btn-dark-pill" onclick="navigateTo('dashboard')">🏠 Về Hôm nay</button>
+                    </div>
+                </div>
+            </section>
+
+        
+            <!-- ==================== PAGE: LỊCH TUẦN ==================== -->
+            <section id="page-week" class="page-view">
+                <div class="page-header">
+                    <div>
+                        <div class="section-tag">STUDY MANAGEMENT / LỊCH TUẦN</div>
+                        <h1 class="page-title">📆 Lịch tuần</h1>
+                    </div>
+                    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <button class="btn-dark-pill" onclick="shiftWeek(-1)">◀ Tuần trước</button>
+                        <button class="btn-dark-pill" onclick="shiftWeek(0)">Tuần này</button>
+                        <button class="btn-dark-pill" onclick="shiftWeek(1)">Tuần sau ▶</button>
+                    </div>
+                </div>
+                <div class="finto-card">
+                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+                        <h3 id="weekTitle" class="card-title"></h3>
+                        <div style="display:flex; gap:16px; font-size:0.78rem; color:var(--text-secondary);">
+                            <span>⬜ Giờ học trên trường</span><span>🟦 Buổi tự học</span>
+                        </div>
+                    </div>
+                    <div style="overflow-x:auto;"><div id="weekGrid"></div></div>
+                    <p class="card-caption" style="margin-top:14px;">Chưa thấy buổi tự học? Vào mục AI Scheduler và bấm "Chạy thuật toán xếp lịch".</p>
+                </div>
+            </section>
+
+        </main>
+    </div>
+</div>
+
+<!-- ==================== MODAL ĐĂNG NHẬP / ĐĂNG KÝ (GÓC PHẢI TRÊN CÙNG) ==================== -->
+<div id="authModal" class="modal-backdrop" onclick="if(event.target===this) closeAuthModal()">
+    <div class="modal-box">
+        <div id="authLoggedOutView">
+            <div class="section-tag" style="color:var(--accent-red);">TÀI KHOẢN HỆ THỐNG</div>
+            <h2 style="font-size:1.5rem; font-weight:800; margin-bottom:16px;">Truy cập hệ thống</h2>
+
+            <div class="auth-tabs">
+                <button id="tabBtnLogin" class="auth-tab active" onclick="switchAuthTab('login')">Đăng nhập</button>
+                <button id="tabBtnReg" class="auth-tab" onclick="switchAuthTab('reg')">Tạo tài khoản</button>
+            </div>
+
+            <span class="field-label">EMAIL</span>
+            <input id="authEmail" type="email" class="finto-input" placeholder="tenban@example.com">
+
+            <span class="field-label">MẬT KHẨU</span>
+            <input id="authPass" type="password" class="finto-input" placeholder="Tối thiểu 8 ký tự">
+
+            <button id="authSubmitBtn" class="btn-white-pill" style="width:100%; margin-top:22px;" onclick="submitAuth()">
+                Đăng nhập ➔
+            </button>
+        </div>
+
+        <div id="authLoggedInView" style="display:none;">
+            <div class="section-tag">SUPABASE CLOUD CONNECTED</div>
+            <h3 style="font-size:1.3rem; margin-bottom:10px;">Thông tin tài khoản</h3>
+            <p id="loggedEmailText" style="color:var(--accent-green); font-weight:600; margin-bottom:8px;"></p>
+            <p class="card-caption">Dữ liệu thời khóa biểu và việc cần làm của bạn đã được kết nối an toàn với cơ sở dữ liệu Supabase.</p>
+            <button class="btn-white-pill" style="width:100%; margin-top:14px;" onclick="logoutUser()">🚪 Đăng xuất</button>
+            <button class="btn-dark-pill" style="width:100%; margin-top:10px; color:#F87171; border-color:rgba(248,113,113,0.4);" onclick="deleteAccount()">🗑️ Xóa tài khoản và dữ liệu</button>
+        </div>
+    </div>
+</div>
+
+<div id="toastBox" class="toast-container"></div>
+
+<!-- ==================== JAVASCRIPT LOGIC ==================== -->
+<script src="/static/app.js"></script>
+<script src="/static/progress.js"></script>
+<script src="/static/quiz.js"></script>
+<script src="/static/week.js"></script>
+</body>
+</html>
